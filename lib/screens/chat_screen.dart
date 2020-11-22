@@ -118,51 +118,68 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           );
         }
-        return ListView.builder(
-          itemCount: snapshot.data.docs.length,
-          reverse: true,
-          itemBuilder: (context, index) {
-            //print(snapshot.data.docs[index]['senderUid']);
-            //print(widget.senderUid);
-            return Row(
-              mainAxisAlignment:
-                  snapshot.data.docs[index]['senderUid'] == widget.senderUid
-                      ? MainAxisAlignment.end
-                      : MainAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 10.0, vertical: 6.0),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10.0, vertical: 6.0),
-                  decoration: BoxDecoration(
-                    color: snapshot.data.docs[index]['senderUid'] ==
-                            widget.senderUid
-                        ? Colors.grey
-                        : Colors.deepPurpleAccent,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(10.0),
-                      bottomRight: Radius.circular(10.0),
-                      topLeft: snapshot.data.docs[index]['senderUid'] ==
-                              widget.senderUid
-                          ? Radius.circular(10.0)
-                          : Radius.circular(0.0),
-                      topRight: snapshot.data.docs[index]['senderUid'] ==
-                              widget.senderUid
-                          ? Radius.circular(0.0)
-                          : Radius.circular(10.0),
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ListView.builder(
+            itemCount: snapshot.data.docs.length,
+            reverse: true,
+            itemBuilder: (context, index) {
+              //print(snapshot.data.docs[index]['senderUid']);
+              //print(widget.senderUid);
+
+              Timestamp timeStamp = snapshot.data.docs[index]['timestamp'];
+              //String date = timeStamp.toDate().toString().substring(0, 10);
+              String time = timeStamp.toDate().toString().substring(11, 16);
+              bool sender =
+                  snapshot.data.docs[index]['senderUid'] == widget.senderUid;
+              //print(time.toDate().day);
+              return Row(
+                mainAxisAlignment:
+                    sender ? MainAxisAlignment.end : MainAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 10.0, vertical: 6.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10.0, vertical: 6.0),
+                    decoration: BoxDecoration(
+                      color: sender ? Colors.grey : Colors.deepPurple,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(10.0),
+                        bottomRight: Radius.circular(10.0),
+                        topLeft: sender
+                            ? Radius.circular(10.0)
+                            : Radius.circular(0.0),
+                        topRight: sender
+                            ? Radius.circular(0.0)
+                            : Radius.circular(10.0),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        SizedBox(
+                          width: 250,
+                          child: Text(
+                            snapshot.data.docs[index]['message'],
+                            style: TextStyle(
+                              fontSize: 18.0,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          time,
+                          style: TextStyle(
+                            color: sender ? Colors.black : Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    snapshot.data.docs[index]['message'],
-                    style: TextStyle(
-                      fontSize: 16.0,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         );
       },
     );

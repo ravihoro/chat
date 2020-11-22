@@ -75,16 +75,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   NetworkImage(user.photoURL),
             ),
           ),
+          // ListTile(
+          //   title: Text(
+          //     "Theme",
+          //     style: TextStyle(
+          //       color: Colors.deepPurpleAccent,
+          //     ),
+          //   ),
+          // ),
           ListTile(
-            title: Text(
-              "Theme",
-              style: TextStyle(
-                color: Colors.deepPurpleAccent,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: Icon(Icons.exit_to_app),
             title: Text("Sign Out",
                 style: TextStyle(color: Colors.deepPurpleAccent)),
             trailing: Icon(
