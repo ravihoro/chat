@@ -1,5 +1,10 @@
+import 'package:chat/screens/image_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path/path.dart' as Path;
 
 class ChatScreen extends StatefulWidget {
   final String name;
@@ -13,19 +18,12 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  List<Message> messages = [
-    Message(id: "1", message: "I'm also fine"),
-    Message(id: "2", message: "I'm fine. How are you?"),
-    Message(id: "1", message: "How are you?"),
-    Message(id: "2", message: "Hello"),
-    Message(id: "1", message: "Hi"),
-  ];
-
   CollectionReference _colRef;
-  DocumentReference _docRef;
+  //DocumentReference _docRef;
+  File _image;
 
   TextEditingController _controller;
-  String message;
+  String message; //Store url in case of image
 
   @override
   void initState() {
@@ -35,26 +33,66 @@ class _ChatScreenState extends State<ChatScreen> {
     _colRef = FirebaseFirestore.instance.collection('messages');
   }
 
-  void submit() {
-    setState(() {
-      message = _controller.text;
-      _controller.clear();
+  Future getImage() async {
+    ImagePicker imagePicker = ImagePicker();
+    await imagePicker.getImage(source: ImageSource.gallery).then((image) {
+      setState(() {
+        _image = File(image.path);
+      });
     });
-    Timestamp time = Timestamp.now();
-    _colRef.doc(widget.senderUid).collection(widget.receiverUid).doc().set({
-      'message': message,
-      'senderUid': widget.senderUid,
-      'receiverUid': widget.receiverUid,
-      'timestamp': time,
-      'type': 'text',
-    });
+    uploadPic();
+  }
 
-    _colRef.doc(widget.receiverUid).collection(widget.senderUid).doc().set({
+  Future uploadPic() async {
+    Reference ref = FirebaseStorage.instance
+        .ref()
+        .child('/chats/${Path.basename(_image.path)}');
+    UploadTask uploadTask = ref.putFile(_image);
+    await uploadTask.whenComplete(() {
+      print('File uploaded');
+      ref.getDownloadURL().then((url) {
+        setState(() {
+          message = url; //message will store image in case of url
+          submit(messageType: 'image');
+        });
+      });
+    });
+  }
+
+  void submit({String messageType}) {
+    if (messageType == 'text') {
+      setState(() {
+        message = _controller.text;
+        _controller.clear();
+      });
+    }
+    Timestamp time = Timestamp.now();
+    send(
+        sender: widget.senderUid,
+        receiver: widget.receiverUid,
+        messageType: messageType,
+        time: time,
+        message: message);
+    send(
+        sender: widget.receiverUid,
+        receiver: widget.senderUid,
+        messageType: messageType,
+        time: time,
+        message: message);
+  }
+
+  void send(
+      {String sender,
+      String receiver,
+      String messageType,
+      String message,
+      Timestamp time}) {
+    _colRef.doc(sender).collection(receiver).doc().set({
       'message': message,
       'senderUid': widget.senderUid,
       'receiverUid': widget.receiverUid,
       'timestamp': time,
-      'type': 'text',
+      'type': messageType,
     });
   }
 
@@ -86,12 +124,18 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               IconButton(
+                icon: Icon(Icons.attachment),
                 onPressed: () {
-                  submit();
+                  getImage();
+                },
+              ),
+              IconButton(
+                onPressed: () {
+                  submit(messageType: "text");
                 },
                 icon: Icon(
                   Icons.send,
-                  color: Colors.deepPurple,
+                  //color: Colors.deepPurple,
                 ),
               ),
             ],
@@ -124,64 +168,96 @@ class _ChatScreenState extends State<ChatScreen> {
             itemCount: snapshot.data.docs.length,
             reverse: true,
             itemBuilder: (context, index) {
-              //print(snapshot.data.docs[index]['senderUid']);
-              //print(widget.senderUid);
-
               Timestamp timeStamp = snapshot.data.docs[index]['timestamp'];
-              //String date = timeStamp.toDate().toString().substring(0, 10);
               String time = timeStamp.toDate().toString().substring(11, 16);
-              bool sender =
+              bool isSender =
                   snapshot.data.docs[index]['senderUid'] == widget.senderUid;
-              //print(time.toDate().day);
+              bool isImage = snapshot.data.docs[index]['type'] == 'image';
               return Row(
                 mainAxisAlignment:
-                    sender ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
                 children: [
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 10.0, vertical: 6.0),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10.0, vertical: 6.0),
-                    decoration: BoxDecoration(
-                      color: sender ? Colors.grey : Colors.deepPurple,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(10.0),
-                        bottomRight: Radius.circular(10.0),
-                        topLeft: sender
-                            ? Radius.circular(10.0)
-                            : Radius.circular(0.0),
-                        topRight: sender
-                            ? Radius.circular(0.0)
-                            : Radius.circular(10.0),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        SizedBox(
-                          width: 250,
-                          child: Text(
-                            snapshot.data.docs[index]['message'],
-                            style: TextStyle(
-                              fontSize: 18.0,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          time,
-                          style: TextStyle(
-                            color: sender ? Colors.black : Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  isImage
+                      ? imageContainer(
+                          url: snapshot.data.docs[index]['message'])
+                      : textContainer(
+                          isSender: isSender,
+                          time: time,
+                          textMessage: snapshot.data.docs[index]['message']),
                 ],
               );
             },
           ),
         );
       },
+    );
+  }
+
+  Widget imageContainer({String url}) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => ImageScreen(tag: url, url: url)));
+      },
+      child: Hero(
+        tag: url,
+        child: Container(
+          //padding: const EdgeInsets.all(10.0),
+          margin: const EdgeInsets.symmetric(vertical: 5.0),
+          height: 200,
+          width: 200,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15.0),
+            border: Border.all(
+              width: 3.0,
+              color: Colors.grey,
+            ),
+            image: DecorationImage(
+              fit: BoxFit.cover,
+              image: NetworkImage(
+                url,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget textContainer({bool isSender, String textMessage, String time}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+      decoration: BoxDecoration(
+        color: isSender ? Colors.grey : Colors.deepPurple,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(10.0),
+          bottomRight: Radius.circular(10.0),
+          topLeft: isSender ? Radius.circular(10.0) : Radius.circular(0.0),
+          topRight: isSender ? Radius.circular(0.0) : Radius.circular(10.0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          SizedBox(
+            width: 250,
+            child: Text(
+              textMessage,
+              //snapshot.data.docs[index]['message'],
+              style: TextStyle(
+                fontSize: 18.0,
+              ),
+            ),
+          ),
+          Text(
+            time,
+            style: TextStyle(
+              color: isSender ? Colors.black : Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

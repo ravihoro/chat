@@ -34,6 +34,8 @@ dependencies:
   flutter_signin_button:
   shared_preferences:
   google_sign_in:
+  firebase_storage:
+  image_picker:
 
 dev_dependencies:
   flutter_test:
