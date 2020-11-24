@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart' as Path;
+import 'package:file_picker/file_picker.dart';
 //import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -21,7 +22,9 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   CollectionReference _colRef;
   //DocumentReference _docRef;
-  File _image;
+  //File _image;
+  File _file;
+  String fileName;
 
   TextEditingController _controller;
   String message; //Store url in case of image
@@ -34,33 +37,179 @@ class _ChatScreenState extends State<ChatScreen> {
     _colRef = FirebaseFirestore.instance.collection('messages');
   }
 
-  Future getImage() async {
-    ImagePicker imagePicker = ImagePicker();
-    await imagePicker.getImage(source: ImageSource.gallery).then((image) {
-      setState(() {
-        _image = File(image.path);
-      });
-    });
-    uploadPic();
+  showBottomSheet({@required BuildContext context}) {
+    showModalBottomSheet(
+        context: context,
+        builder: (context) {
+          return Wrap(
+            children: [
+              Column(
+                children: [
+                  SizedBox(
+                    height: 20.0,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Column(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.pages),
+                            onPressed: () {
+                              getDocument();
+                            },
+                          ),
+                          Text(
+                            'Documents',
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.camera),
+                            onPressed: () {
+                              getImage(source: 'camera');
+                            },
+                          ),
+                          Text(
+                            'Camera',
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.photo_size_select_actual_rounded),
+                            onPressed: () {
+                              getImage(source: 'gallery');
+                            },
+                          ),
+                          Text(
+                            'Gallery',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 20.0,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Column(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.audiotrack),
+                            onPressed: () {},
+                          ),
+                          Text(
+                            'Audio',
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.location_on),
+                            onPressed: () {},
+                          ),
+                          Text(
+                            'Location',
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.contact_page),
+                            onPressed: () {},
+                          ),
+                          Text(
+                            'Contacts',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 20.0,
+                  ),
+                ],
+              )
+            ],
+          );
+        });
   }
 
-  Future uploadPic() async {
+  Future getDocument() async {
+    await FilePicker.getFile().then((file) {
+      setState(() {
+        _file = file;
+      });
+    });
+    Navigator.of(context).pop();
+    upload(messageType: 'document');
+  }
+
+  Future getImage({@required String source}) async {
+    ImagePicker imagePicker = ImagePicker();
+    if (source == 'gallery') {
+      await imagePicker.getImage(source: ImageSource.gallery).then((image) {
+        setState(() {
+          //_image = File(image.path);
+          _file = File(image.path);
+        });
+      });
+    } else {
+      await imagePicker.getImage(source: ImageSource.camera).then((image) {
+        setState(() {
+          //_image = File(image.path);
+          _file = File(image.path);
+        });
+      });
+    }
+    Navigator.of(context).pop();
+    upload(messageType: 'image');
+  }
+
+  Future upload({@required String messageType}) async {
     Reference ref = FirebaseStorage.instance
         .ref()
-        .child('/chats/${Path.basename(_image.path)}');
-    UploadTask uploadTask = ref.putFile(_image);
+        .child('/chats/${Path.basename(_file.path)}');
+    fileName = Path.basename(_file.path);
+    //print('File name is: ${Path.basename(_file.path)}');
+    UploadTask uploadTask = ref.putFile(_file);
     await uploadTask.whenComplete(() {
-      print('File uploaded');
+      //print('File uploaded');
       ref.getDownloadURL().then((url) {
         setState(() {
-          message = url; //message will store image in case of url
-          submit(messageType: 'image');
+          message = url; //message will store url in case of document
+          submit(messageType: messageType, fileName: fileName);
         });
       });
     });
+    //Navigator.of(context).pop();
   }
 
-  void submit({String messageType}) {
+  // Future uploadPic() async {
+  //   Reference ref = FirebaseStorage.instance
+  //       .ref()
+  //       .child('/chats/${Path.basename(_image.path)}');
+  //   UploadTask uploadTask = ref.putFile(_image);
+  //   await uploadTask.whenComplete(() {
+  //     print('File uploaded');
+  //     ref.getDownloadURL().then((url) {
+  //       setState(() {
+  //         message = url; //message will store url in case of image
+  //         submit(messageType: 'image');
+  //       });
+  //     });
+  //   });
+  // }
+
+  void submit({@required String messageType, String fileName}) {
     if (messageType == 'text') {
       setState(() {
         message = _controller.text;
@@ -69,31 +218,38 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     Timestamp time = Timestamp.now();
     send(
-        sender: widget.senderUid,
-        receiver: widget.receiverUid,
-        messageType: messageType,
-        time: time,
-        message: message);
+      sender: widget.senderUid,
+      receiver: widget.receiverUid,
+      messageType: messageType,
+      time: time,
+      message: message,
+      fileName: fileName,
+    );
     send(
-        sender: widget.receiverUid,
-        receiver: widget.senderUid,
-        messageType: messageType,
-        time: time,
-        message: message);
+      sender: widget.receiverUid,
+      receiver: widget.senderUid,
+      messageType: messageType,
+      time: time,
+      message: message,
+      fileName: fileName,
+    );
   }
 
-  void send(
-      {String sender,
-      String receiver,
-      String messageType,
-      String message,
-      Timestamp time}) {
+  void send({
+    String sender,
+    String receiver,
+    String messageType,
+    String message,
+    Timestamp time,
+    String fileName,
+  }) {
     _colRef.doc(sender).collection(receiver).doc().set({
       'message': message,
       'senderUid': widget.senderUid,
       'receiverUid': widget.receiverUid,
       'timestamp': time,
       'type': messageType,
+      'fileName': fileName ?? '',
     });
   }
 
@@ -127,7 +283,8 @@ class _ChatScreenState extends State<ChatScreen> {
               IconButton(
                 icon: Icon(Icons.attachment),
                 onPressed: () {
-                  getImage();
+                  //getImage();
+                  showBottomSheet(context: context);
                 },
               ),
               IconButton(
@@ -174,18 +331,31 @@ class _ChatScreenState extends State<ChatScreen> {
               String time = timeStamp.toDate().toString().substring(11, 16);
               bool isSender =
                   snapshot.data.docs[index]['senderUid'] == widget.senderUid;
-              bool isImage = snapshot.data.docs[index]['type'] == 'image';
+              String type = snapshot.data.docs[index]['type'];
+              //bool isImage = snapshot.data.docs[index]['type'] == 'image';
               return Row(
                 mainAxisAlignment:
                     isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
                 children: [
-                  isImage
-                      ? imageContainer(
-                          url: snapshot.data.docs[index]['message'])
-                      : textContainer(
+                  type == 'text'
+                      ? textContainer(
                           isSender: isSender,
                           time: time,
-                          textMessage: snapshot.data.docs[index]['message']),
+                          textMessage: snapshot.data.docs[index]['message'],
+                        )
+                      : type == 'image'
+                          ? imageContainer(
+                              url: snapshot.data.docs[index]['message'])
+                          : documentContainer(
+                              url: snapshot.data.docs[index]['message'],
+                              fileName: snapshot.data.docs[index]['fileName']),
+                  // isImage
+                  //     ? imageContainer(
+                  //         url: snapshot.data.docs[index]['message'])
+                  //     : textContainer(
+                  //         isSender: isSender,
+                  //         time: time,
+                  //         textMessage: snapshot.data.docs[index]['message']),
                 ],
               );
             },
@@ -195,7 +365,35 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget imageContainer({String url}) {
+  Widget documentContainer({@required String url, @required String fileName}) {
+    print(url);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5.0),
+      padding: const EdgeInsets.all(10.0),
+      height: 50.0,
+      //width: 200.0,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15.0),
+        border: Border.all(
+          width: 3.0,
+          color: Colors.grey,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.file_present),
+          SizedBox(
+            width: 5.0,
+          ),
+          Text(
+            fileName,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget imageContainer({@required String url}) {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(MaterialPageRoute(
@@ -268,11 +466,4 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-}
-
-class Message {
-  final String id;
-  final String message;
-
-  Message({this.id, this.message});
 }
