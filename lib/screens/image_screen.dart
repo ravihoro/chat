@@ -9,11 +9,13 @@ class ImageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Hero(
-          tag: tag,
-          child: Image.network(
-            url,
+      body: InteractiveViewer(
+        child: Center(
+          child: Hero(
+            tag: tag,
+            child: Image.network(
+              url,
+            ),
           ),
         ),
       ),

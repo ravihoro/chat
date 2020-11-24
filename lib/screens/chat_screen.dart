@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart' as Path;
+//import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatScreen extends StatefulWidget {
   final String name;
@@ -153,6 +154,7 @@ class _ChatScreenState extends State<ChatScreen> {
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        //print(snapshot.data);
         if (!snapshot.hasData ||
             snapshot.data == null ||
             snapshot.data.docs.length == 0) {
@@ -206,6 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
           margin: const EdgeInsets.symmetric(vertical: 5.0),
           height: 200,
           width: 200,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15.0),
             border: Border.all(
@@ -219,6 +222,11 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
+          // child: CachedNetworkImage(
+          //   placeholder: (context, url) => SizedBox(
+          //       height: 100, width: 100, child: CircularProgressIndicator()),
+          //   imageUrl: url,
+          // ),
         ),
       ),
     );

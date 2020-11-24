@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-//import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -19,21 +18,15 @@ class _HomeScreenState extends State<HomeScreen> {
   CollectionReference _colRef;
   QuerySnapshot result;
   User user;
+  List<DocumentSnapshot> documents;
 
   @override
   initState() {
     super.initState();
     user = _auth.currentUser;
-    //getUserInfo();
     _colRef = FirebaseFirestore.instance.collection('users');
     _docRef = _colRef.doc(user.uid);
-
-    //print(_docRef);
-    //print(_docRef.snapshots() == null);
     checkIfDocExists();
-    // print(user.uid);
-    //uploadUserInfo();
-    //checkIfDocExists();
   }
 
   checkIfDocExists() async {
@@ -43,15 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  getUserInfo() {
-    _docRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc('ravijohnhoro5@gmail.com');
-    print(_docRef.id);
-  }
-
   uploadUserInfo() async {
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+    await _colRef.doc(user.uid).set({
       'name': user.displayName,
       'email': user.email,
       'photoUrl': user.photoURL,
@@ -111,6 +97,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            onPressed: () {
+              showSearch(context: context, delegate: UserSearch());
+            },
+          ),
+        ],
         title: Text(
           'Chat App',
         ),
@@ -123,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       //   ],
       // ),
       body: FutureBuilder(
+        //future: _colRef.get(),
         future: _colRef.get(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (!snapshot.hasData) {
@@ -130,20 +125,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: CircularProgressIndicator(),
             );
           }
-          List<DocumentSnapshot> documents = snapshot.data.docs;
+          documents = snapshot.data.docs;
           return ListView.builder(
             itemCount: documents.length,
             itemBuilder: (context, index) {
-              //print(documents.length);
-              //print('${documents[index].id} and ${user.uid}');
-              //print(documents[index].id == user.uid);
-              // return _customTile(
-              //   context: context,
-              //   name: documents[index]['name'],
-              //   receiverUid: documents[index].id, // Receiver is another person
-              //   senderUid: user.uid, //Sender is the user himself
-              //   photoUrl: documents[index]['photoUrl'],
-              // );
               if (documents[index].id == user.uid)
                 return Container();
               else {
@@ -163,61 +148,153 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: customDrawer(),
     );
   }
+}
 
-  Widget _customTile(
-      {BuildContext context,
-      String name,
-      String receiverUid,
-      String senderUid,
-      String photoUrl}) {
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => ChatScreen(
-                  name: name,
-                  senderUid: senderUid,
-                  receiverUid: receiverUid,
-                )));
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 5.0),
-        child: Row(
-          children: [
-            Container(
-              alignment: Alignment.center,
-              height: 60.0,
-              width: 60.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30.0),
-                color: Colors.grey,
-                image: DecorationImage(
-                  image: photoUrl == ""
-                      ? AssetImage('assets/user.jpg')
-                      : NetworkImage(photoUrl),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 12.0),
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontSize: 18.0,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
+Widget _customTile(
+    {BuildContext context,
+    String name,
+    String receiverUid,
+    String senderUid,
+    String photoUrl}) {
+  return InkWell(
+    onTap: () {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => ChatScreen(
+                name: name,
+                senderUid: senderUid,
+                receiverUid: receiverUid,
+              )));
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 5.0),
+      child: Row(
+        children: [
+          Container(
+            alignment: Alignment.center,
+            height: 60.0,
+            width: 60.0,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30.0),
               color: Colors.grey,
-              width: 0.3,
+              image: DecorationImage(
+                image: photoUrl == ""
+                    ? AssetImage('assets/user.jpg')
+                    : NetworkImage(photoUrl),
+              ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 12.0),
+            child: Text(
+              name,
+              style: TextStyle(
+                fontSize: 18.0,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey,
+            width: 0.3,
           ),
         ),
       ),
+    ),
+  );
+}
+
+class UserSearch extends SearchDelegate {
+  CollectionReference _colRef = FirebaseFirestore.instance.collection('users');
+
+  @override
+  String get searchFieldLabel => 'Search Users';
+
+  @override
+  TextStyle get searchFieldStyle => TextStyle(
+        color: Colors.white,
+        fontSize: 18.0,
+      );
+
+  ThemeData appBarTheme(BuildContext context) {
+    assert(context != null);
+    final ThemeData theme = Theme.of(context).copyWith(
+      textTheme: TextTheme(
+        headline6: TextStyle(
+          color: Colors.white,
+        ),
+      ),
+    );
+    assert(theme != null);
+    return theme;
+  }
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  User user;
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: Icon(Icons.cancel),
+        onPressed: () {
+          query = "";
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, null);
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return Container();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return FutureBuilder(
+      future: _colRef.get(),
+      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (!snapshot.hasData) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        List<DocumentSnapshot> documents = snapshot.data.docs;
+
+        user = _auth.currentUser;
+        return ListView.builder(
+          itemCount: documents.length,
+          itemBuilder: (context, index) {
+            return (documents[index]['name']
+                        .toString()
+                        .toLowerCase()
+                        .contains(query.toLowerCase()) &&
+                    !(documents[index].id == user.uid))
+                ? _customTile(
+                    context: context,
+                    name: documents[index]['name'],
+                    receiverUid:
+                        documents[index].id, // Receiver is another person
+                    senderUid: user.uid, //Sender is the user himself
+                    photoUrl: documents[index]['photoUrl'],
+                  )
+                : Container();
+          },
+        );
+      },
     );
   }
 }
