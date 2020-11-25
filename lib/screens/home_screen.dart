@@ -139,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       documents[index].id, // Receiver is another person
                   senderUid: user.uid, //Sender is the user himself
                   photoUrl: documents[index]['photoUrl'],
+                  email: documents[index]['email'],
                 );
               }
             },
@@ -155,7 +156,8 @@ Widget _customTile(
     String name,
     String receiverUid,
     String senderUid,
-    String photoUrl}) {
+    String photoUrl,
+    String email}) {
   return InkWell(
     onTap: () {
       Navigator.of(context).push(MaterialPageRoute(
@@ -163,6 +165,8 @@ Widget _customTile(
                 name: name,
                 senderUid: senderUid,
                 receiverUid: receiverUid,
+                photoUrl: photoUrl,
+                email: email,
               )));
     },
     child: Container(

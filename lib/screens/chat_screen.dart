@@ -12,8 +12,11 @@ class ChatScreen extends StatefulWidget {
   final String name;
   final String senderUid;
   final String receiverUid;
+  final String photoUrl;
+  final String email;
 
-  ChatScreen({this.name, this.senderUid, this.receiverUid});
+  ChatScreen(
+      {this.name, this.senderUid, this.receiverUid, this.photoUrl, this.email});
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
