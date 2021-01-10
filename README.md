@@ -11,3 +11,6 @@ A chat application built using Flutter.
 - Flutter
 - Firebase 
 - Shared Preferences
+
+## Screenshots
+<img src = "screenshots/chat1.jpg" width = 250 > <img src = "screenshots/chat2.jpg" width = 250 > <img src = "screenshots/chat3.jpg" width = 250 > <img src = "screenshots/chat4.jpg" width = 250 > <img src = "screenshots/chat5.jpg" width = 250 >
